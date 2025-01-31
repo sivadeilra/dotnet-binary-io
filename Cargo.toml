@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["Arlie Davis sivadeilra"]
 description = "Reads and writes buffers using the same encoding rules as .NET's `System.IO.BinaryWriter`."
 repository = "https://github.com/sivadeilra/dotnet-binary-io"
-license = "Apache-2 OR MIT"
+license = "MIT or Apache-2.0"
 categories = ["encoding", "parsing"]
 
 [features]
