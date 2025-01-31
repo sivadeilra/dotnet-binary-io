@@ -1,4 +1,3 @@
-use std::io::Write;
 use zerocopy::IntoBytes;
 
 extern crate alloc;
@@ -7,29 +6,27 @@ use alloc::vec::Vec;
 pub type Result<T> = core::result::Result<T, BinaryWriterError>;
 
 /// Encodes binary values, using the same rules as .NET's `System.IO.BinaryWriter`.
-pub struct BinaryWriter<T> {
+pub struct BinaryWriter {
     /// The output data.
-    pub out: T,
+    pub out: Vec<u8>,
 }
 
-impl<T: Write> BinaryWriter<T> {
+impl BinaryWriter {
     /// Constructor
-    pub fn wrap(out: T) -> Self {
+    pub fn wrap(out: Vec<u8>) -> Self {
         Self { out }
     }
 
     /// Extracts the inner buffer
-    pub fn into_inner(self) -> T {
+    pub fn into_inner(self) -> Vec<u8> {
         self.out
     }
 
     /// Accesses the inner buffer
-    pub fn inner_mut(&mut self) -> &mut T {
+    pub fn inner_mut(&mut self) -> &mut Vec<u8> {
         &mut self.out
     }
-}
 
-impl BinaryWriter<Vec<u8>> {
     /// Creates a new `BinaryWriter` over a `Vec<u8>`
     pub fn new() -> Self {
         Self { out: Vec::new() }
