@@ -4,7 +4,7 @@ use zerocopy::IntoBytes;
 extern crate alloc;
 use alloc::vec::Vec;
 
-pub type Result<T> = core::result::Result<T, WriterError>;
+pub type Result<T> = core::result::Result<T, BinaryWriterError>;
 
 /// Encodes binary values, using the same rules as .NET's `System.IO.BinaryWriter`.
 pub struct BinaryWriter<T> {
@@ -159,7 +159,7 @@ impl BinaryWriter<Vec<u8>> {
 
     /// Writes a UTF-8 string in length-prefixed form.
     pub fn write_utf8_str(&mut self, s: &str) -> Result<()> {
-        let len_i32 = i32::try_from(s.len()).map_err(|_| WriterError::CannotEncode)?;
+        let len_i32 = i32::try_from(s.len()).map_err(|_| BinaryWriterError::CannotEncode)?;
         self.write_7bit_encoded_i32(len_i32);
         self.write_bytes(s.as_bytes());
         Ok(())
@@ -169,7 +169,7 @@ impl BinaryWriter<Vec<u8>> {
     ///
     /// This function does not validate that the input string is well-formed UTF-8.
     pub fn write_utf8_bytes(&mut self, s: &[u8]) -> Result<()> {
-        let len_i32 = i32::try_from(s.len()).map_err(|_| WriterError::CannotEncode)?;
+        let len_i32 = i32::try_from(s.len()).map_err(|_| BinaryWriterError::CannotEncode)?;
         self.write_7bit_encoded_i32(len_i32);
         self.write_bytes(s);
         Ok(())
@@ -180,7 +180,7 @@ impl BinaryWriter<Vec<u8>> {
     /// This function does not validate that the input string is well-formed UTF-16.
     pub fn write_utf16_wchars(&mut self, s: &[u16]) -> Result<()> {
         let s_bytes = s.as_bytes();
-        let len_i32 = i32::try_from(s_bytes.len()).map_err(|_| WriterError::CannotEncode)?;
+        let len_i32 = i32::try_from(s_bytes.len()).map_err(|_| BinaryWriterError::CannotEncode)?;
         self.write_7bit_encoded_i32(len_i32);
         self.write_bytes(s_bytes);
         Ok(())
@@ -200,9 +200,19 @@ impl BinaryWriter<Vec<u8>> {
 }
 
 /// Error type for some `write_*` functions of `BinaryWriter`.
-#[derive(Clone, Debug)]
-pub enum WriterError {
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub enum BinaryWriterError {
     /// Indicates that a value cannot be encoded. This is used for cases where a string or slice
     /// is too large to encode using the variable-length encoding rules.
     CannotEncode,
+}
+
+impl core::error::Error for BinaryWriterError {}
+
+impl core::fmt::Display for BinaryWriterError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::CannotEncode => f.write_str("The data cannot be encoded"),
+        }
+    }
 }

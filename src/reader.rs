@@ -4,7 +4,7 @@ use std::borrow::Cow;
 use zerocopy::byteorder::{LE, U16};
 use zerocopy::FromBytes;
 
-pub type Result<T> = core::result::Result<T, ReaderError>;
+pub type Result<T> = core::result::Result<T, BinaryReaderError>;
 
 /// Reads values from a slice of bytes. The values are encoded using the rules defined by .NET's
 /// `System.IO.BinaryWriter`.
@@ -47,7 +47,19 @@ impl<'a> BinaryReader<'a> {
             self.data = &self.data[1..];
             Ok(value)
         } else {
-            Err(ReaderError::NeedsMoreData)
+            Err(BinaryReaderError::NeedsMoreData)
+        }
+    }
+
+    /// Reads a single `bool` value.
+    #[inline(always)]
+    pub fn read_bool(&mut self) -> Result<bool> {
+        if !self.data.is_empty() {
+            let value = self.data[0];
+            self.data = &self.data[1..];
+            Ok(value != 0)
+        } else {
+            Err(BinaryReaderError::NeedsMoreData)
         }
     }
 
@@ -56,7 +68,7 @@ impl<'a> BinaryReader<'a> {
     #[inline(always)]
     pub fn read_bytes(&mut self, len: usize) -> Result<&'a [u8]> {
         if self.data.len() < len {
-            Err(ReaderError::NeedsMoreData)
+            Err(BinaryReaderError::NeedsMoreData)
         } else {
             let (lo, hi) = self.data.split_at(len);
             self.data = hi;
@@ -68,12 +80,25 @@ impl<'a> BinaryReader<'a> {
     #[inline(always)]
     pub fn read_cbytes<const N: usize>(&mut self) -> Result<[u8; N]> {
         if self.data.len() < N {
-            Err(ReaderError::NeedsMoreData)
+            Err(BinaryReaderError::NeedsMoreData)
         } else {
             let (lo, hi) = self.data.split_at(N);
             self.data = hi;
             // This unwrap() call will get optimized out.
             Ok(*<&[u8; N]>::try_from(lo).unwrap())
+        }
+    }
+
+    /// Reads a small array of bytes, with a constant length.
+    #[inline(always)]
+    pub fn read_cbytes_ref<const N: usize>(&mut self) -> Result<&[u8; N]> {
+        if self.data.len() < N {
+            Err(BinaryReaderError::NeedsMoreData)
+        } else {
+            let (lo, hi) = self.data.split_at(N);
+            self.data = hi;
+            // This unwrap() call will get optimized out.
+            Ok(<&[u8; N]>::try_from(lo).unwrap())
         }
     }
 
@@ -136,7 +161,7 @@ impl<'a> BinaryReader<'a> {
 
             shift += 7;
             if shift >= 32 {
-                return Err(ReaderError::Invalid);
+                return Err(BinaryReaderError::Invalid);
             }
         }
 
@@ -160,7 +185,7 @@ impl<'a> BinaryReader<'a> {
 
             shift += 7;
             if shift >= 64 {
-                return Err(ReaderError::Invalid);
+                return Err(BinaryReaderError::Invalid);
             }
         }
 
@@ -176,7 +201,7 @@ impl<'a> BinaryReader<'a> {
     pub fn read_utf8_bytes(&mut self) -> Result<&'a [u8]> {
         let len_i32 = self.read_7bit_encoded_i32()?;
         let Ok(len_usize) = usize::try_from(len_i32) else {
-            return Err(ReaderError::Invalid);
+            return Err(BinaryReaderError::Invalid);
         };
 
         self.read_bytes(len_usize)
@@ -210,7 +235,7 @@ impl<'a> BinaryReader<'a> {
         if let Ok(s) = core::str::from_utf8(bytes) {
             Ok(s)
         } else {
-            Err(ReaderError::NeedsMoreData)
+            Err(BinaryReaderError::NeedsMoreData)
         }
     }
 
@@ -240,13 +265,13 @@ impl<'a> BinaryReader<'a> {
     pub fn read_utf16_wchars(&mut self) -> Result<&'a [U16<LE>]> {
         let bytes_len_i32 = self.read_7bit_encoded_i32()?;
         let Ok(bytes_len_usize) = usize::try_from(bytes_len_i32) else {
-            return Err(ReaderError::Invalid);
+            return Err(BinaryReaderError::Invalid);
         };
 
         let bytes = self.read_bytes(bytes_len_usize)?;
 
         let Ok(wchars) = <[U16<LE>]>::ref_from_bytes(bytes) else {
-            return Err(ReaderError::Invalid);
+            return Err(BinaryReaderError::Invalid);
         };
 
         Ok(wchars)
@@ -268,7 +293,7 @@ impl<'a> BinaryReader<'a> {
     pub fn read_utf16_string(&mut self) -> Result<String> {
         let wchars = self.read_utf16_wchars()?;
         let wchars_u16: Vec<u16> = wchars.iter().map(|c| c.get()).collect();
-        String::from_utf16(&wchars_u16).map_err(|_| ReaderError::Invalid)
+        String::from_utf16(&wchars_u16).map_err(|_| BinaryReaderError::Invalid)
     }
 
     /// Reads a length-prefixed UTF-16 string and returns it as `String`.
@@ -288,8 +313,8 @@ impl<'a> BinaryReader<'a> {
 }
 
 /// Error type for `BinaryReader`
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum ReaderError {
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub enum BinaryReaderError {
     /// A `read_*` method reached the end of the input data, but requires more data to finish
     /// reading the input.
     ///
@@ -300,4 +325,19 @@ pub enum ReaderError {
 
     /// The `read_*` request found invalid data in the input. The input is malformed.
     Invalid,
+}
+
+impl core::error::Error for BinaryReaderError {}
+
+impl core::fmt::Display for BinaryReaderError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::NeedsMoreData => f.write_str(
+                "The value could not be decoded because the input data was not complete.",
+            ),
+            Self::Invalid => {
+                f.write_str("The value could not be decoded because the input data is malformed.")
+            }
+        }
+    }
 }

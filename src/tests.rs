@@ -20,7 +20,7 @@ fn read_cbytes_zero_len() {
 #[test]
 fn read_cbytes_not_enough() {
     let mut r = BinaryReader::new(&[0x33, 0x44, 0x55]);
-    assert_eq!(r.read_cbytes::<5>(), Err(ReaderError::NeedsMoreData));
+    assert_eq!(r.read_cbytes::<5>(), Err(BinaryReaderError::NeedsMoreData));
 }
 
 #[test]
@@ -40,7 +40,7 @@ fn read_u8() {
 #[test]
 fn basic_u16() {
     let mut r = BinaryReader::new(&[]);
-    assert_eq!(r.read_u16(), Err(ReaderError::NeedsMoreData));
+    assert_eq!(r.read_u16(), Err(BinaryReaderError::NeedsMoreData));
 
     let mut r = BinaryReader::new(&[0xaa, 0x55, 0x33, 0x44]);
     assert_eq!(r.read_u16(), Ok(0x55aa));

@@ -6,7 +6,7 @@
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![forbid(unsafe_code)]
 #![forbid(unused_must_use)]
-#![warn(missing_docs)]
+// #![warn(missing_docs)]
 
 mod reader;
 mod writer;
@@ -14,5 +14,5 @@ mod writer;
 #[cfg(test)]
 mod tests;
 
-pub use reader::{BinaryReader, ReaderError};
+pub use reader::{BinaryReader, BinaryReaderError};
 pub use writer::BinaryWriter;
