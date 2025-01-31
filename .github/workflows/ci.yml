@@ -32,5 +32,9 @@ jobs:
 
     - name: Run tests
       run: cargo test
+
     - name: Run tests (no default features)
       run: cargo test --no-default-features
+
+    - name: Rustfmt
+      run: cargo fmt --check
