@@ -1,8 +1,10 @@
 [package]
-name = "net-compat-binary"
+name = "dotnet-binary-io"
 version = "0.1.0"
 edition = "2021"
-repository = "https://github.com/sivadeilra/net-compat-binary"
+authors = ["Arlie Davis sivadeilra"]
+description = "Reads and writes buffers using the same encoding rules as .NET's `System.IO.BinaryWriter`."
+repository = "https://github.com/sivadeilra/dotnet-binary-io"
 
 [features]
 default = ["bstr", "std"]
